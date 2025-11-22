@@ -7,8 +7,8 @@ from dotenv import load_dotenv
 
 # load_dotenv(override=True)
 
-url: str = os.getenv("SUPABASE_URL")
-key: str = os.getenv("SUPABASE_KEY")
+url: str = os.environ["SUPABASE_URL"]
+key: str = os.environ["SUPBASE_KEY"]
 
 supabase: Client = create_client(url, key)
 response = (
