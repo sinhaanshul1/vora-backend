@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 # load_dotenv(override=True)
 
 url: str = os.environ["SUPABASE_URL"]
-key: str = os.environ["SUPBASE_KEY"]
+key: str = os.environ["SUPABASE_KEY"]
 
 supabase: Client = create_client(url, key)
 response = (
@@ -19,20 +19,14 @@ response = (
 
 # print(response)
 
-# Create SQLite database
-DATABASE_URL = "sqlite:///./test.db"
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
-SessionLocal = sessionmaker(bind=engine)
-Base = declarative_base()
 
-# Define a model
-class Snippets(Base):
-    __tablename__ = "snippets"
-    id = Column(Integer, primary_key=True, index=True)
-    title = Column(String, unique = True)
-    author = Column(String)
-    text = Column(String, unique = True)
-    # date = Column(Date)
+# class Snippets(Base):
+#     __tablename__ = "snippets"
+#     id = Column(Integer, primary_key=True, index=True)
+#     title = Column(String, unique = True)
+#     author = Column(String)
+#     text = Column(String, unique = True)
+#     # date = Column(Date)
 
 class SnippetCreate(BaseModel):
     # id: int
@@ -45,14 +39,12 @@ class SnippetCreate(BaseModel):
 
 
 # Create tables
-Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
 @app.get('/snippets')
 def get_users():
     
-    db = SessionLocal()
     # users = db.query(Snippets).all()
     responses = (
     supabase.table("Snippets")
@@ -60,13 +52,11 @@ def get_users():
     .execute()
 )
 
-    db.close()
     return responses
 
 @app.post('/snippets')
 def new_snippet(snippet: SnippetCreate):
     print(snippet.embedding[:5])
-    db = SessionLocal()
     response = (
     supabase.table("Snippets")
     .insert(snippet.model_dump())
