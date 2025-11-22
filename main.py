@@ -1,0 +1,126 @@
+import random
+from fastapi import FastAPI
+from sqlalchemy import create_engine, Column, Integer, String, Date
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+from pydantic import BaseModel
+import os
+from supabase import create_client, Client
+from dotenv import load_dotenv
+
+load_dotenv(override=True)
+
+url: str = os.getenv("SUPABASE_URL")
+key: str = os.getenv("SUPABASE_KEY")
+
+supabase: Client = create_client(url, key)
+response = (
+    supabase.table("Snippets")
+    .select("*")
+    .execute()
+)
+
+# print(response)
+
+# Create SQLite database
+DATABASE_URL = "sqlite:///./test.db"
+engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+SessionLocal = sessionmaker(bind=engine)
+Base = declarative_base()
+
+# Define a model
+class Snippets(Base):
+    __tablename__ = "snippets"
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, unique = True)
+    author = Column(String)
+    text = Column(String, unique = True)
+    # date = Column(Date)
+
+class SnippetCreate(BaseModel):
+    # id: int
+    title: str
+    author: str
+    text: str
+    embedding: list[float]
+    # date: Date
+
+
+
+# Create tables
+Base.metadata.create_all(bind=engine)
+
+app = FastAPI()
+
+@app.get('/snippets')
+def get_users():
+    
+    db = SessionLocal()
+    # users = db.query(Snippets).all()
+    responses = (
+    supabase.table("Snippets")
+    .select("*")
+    .execute()
+)
+
+    db.close()
+    return responses
+
+@app.post('/snippets')
+def new_snippet(snippet: SnippetCreate):
+    print(snippet.embedding[:5])
+    db = SessionLocal()
+    response = (
+    supabase.table("Snippets")
+    .insert(snippet.model_dump())
+    .execute()
+    )
+    return snippet
+
+@app.get('/snippets/similar')
+def get_similar_snippet(id: str, limit: int):
+    res = supabase.rpc(
+        "get_similar_snippets_by_id",
+        {"snippet_id": id, "k": limit}
+    ).execute()
+    new_data = []
+    for d in res.data:
+        new_data.append({'id': d["id_new"], "title": d["title_new"], "author": d["author_new"], "text": d["text_new"], "created_at": d["created_at_new"]})
+    return new_data
+
+@app.get('/snippets')
+def get_snippet_by_id(id: str):
+    response = (
+        supabase
+        .table("Snippets")
+        .select("*")
+        .eq("id", id)
+        .single()
+        .execute()
+    )
+
+
+    return response.data
+
+@app.get('/snippets/random')
+def get_random_snippet():
+    
+    # Step 1: get total count
+    count_resp = supabase.table("Snippets").select("id", count="exact").execute()
+    total = count_resp.count
+
+    if total == 0:
+        return {"error": "No rows in table"}
+
+    # Step 2: pick random offset
+    offset = random.randint(0, total - 1)
+
+    # Step 3: fetch row at that offset
+    row_resp = (
+        supabase.table("Snippets")
+        .select("*")
+        .range(offset, offset)
+        .execute()
+    )
+
+    return row_resp.data[0]
