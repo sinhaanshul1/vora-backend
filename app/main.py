@@ -33,6 +33,7 @@ class SnippetCreate(BaseModel):
     title: str
     author: str
     text: str
+    tags: list[str]
     embedding: list[float]
     # date: Date
 
